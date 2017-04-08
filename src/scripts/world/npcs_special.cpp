@@ -1413,8 +1413,8 @@ CreatureAI* GetAI_npc_gnomish_battle_chicken(Creature* pCreature)
 ######*/
 enum
 {
-	SPELL_Flame_Buffet = 25651,
-	SPELL_Flame_Breath = 20712
+    SPELL_Flame_Buffet = 9574
+	//SPELL_Flame_Breath = 20712
 };
 
 struct npc_arcanite_dragonling_dragonlingAI : ScriptedPetAI
@@ -1451,7 +1451,7 @@ struct npc_arcanite_dragonling_dragonlingAI : ScriptedPetAI
 
 			if (m_firebreathtimer < uiDiff)
 			{
-				if (DoCastSpellIfCan(m_creature, SPELL_Flame_Buffet, CAST_TRIGGERED) == CAST_OK && DoCastSpellIfCan(m_creature, SPELL_Flame_Breath, CAST_TRIGGERED) == CAST_OK)
+				if (DoCastSpellIfCan(m_creature, SPELL_Flame_Buffet, CAST_TRIGGERED) == CAST_OK)
 					m_firebreathtimer = urand(0, 10000);
 			}
 			else
