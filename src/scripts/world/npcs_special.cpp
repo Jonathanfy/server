@@ -1428,11 +1428,13 @@ struct npc_arcanite_dragonling_dragonlingAI : ScriptedPetAI
 
 
 		m_firebreathtimer = urand(0, 10000);
+		m_flamebreathTimer = urand(0, 20000);
 
 		npc_arcanite_dragonling_dragonlingAI::Reset();
 	}
 
 	uint32 m_firebreathtimer;
+	uint32 m_flamebreathTimer;
 
 
 	void Reset() override
@@ -1449,13 +1451,22 @@ struct npc_arcanite_dragonling_dragonlingAI : ScriptedPetAI
 	void UpdatePetAI(const uint32 uiDiff) override
 	{
 
-			if (m_firebreathtimer < uiDiff)
+if (m_firebuffetTimer < uiDiff)
 			{
 				if (DoCastSpellIfCan(m_creature, SPELL_Flame_Buffet, CAST_TRIGGERED) == CAST_OK)
-					m_firebreathtimer = urand(0, 10000);
+					m_firebuffetTimer = urand(0, 10000);
 			}
 			else
-				m_firebreathtimer -= uiDiff;
+				m_firebuffetTimer -= uiDiff;
+			
+			if (m_flamebreathTimer < uiDiff)
+			{
+				int32 damage = 300;
+				m_creature->CastCustomSpell(m_creature, SPELL_Flame_Breath, &damage, nullptr, nullptr, true);
+					m_flamebreathTimer = urand(0, 20000);
+			}
+			else
+				m_flamebreathTimer -= uiDiff;
 
 	
 
