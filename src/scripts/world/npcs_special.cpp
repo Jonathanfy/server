@@ -1414,7 +1414,7 @@ CreatureAI* GetAI_npc_gnomish_battle_chicken(Creature* pCreature)
 enum
 {
     SPELL_Flame_Buffet = 9574,
-	SPELL_Flame_Breath = 20712
+    SPELL_Flame_Breath = 20712
 };
 
 struct npc_arcanite_dragonling_dragonlingAI : ScriptedPetAI
