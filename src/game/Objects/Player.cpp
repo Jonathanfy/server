@@ -435,6 +435,7 @@ Player::Player(WorldSession *session) : Unit(),
 
     m_modManaRegen = 0;
     m_modManaRegenInterrupt = 0;
+    m_carryHealthRegen = 0;
     for (int s = 0; s < MAX_SPELL_SCHOOL; s++)
         m_SpellCritPercentage[s] = 0.0f;
     m_regenTimer = 0;
@@ -908,7 +909,8 @@ uint32 Player::EnvironmentalDamage(EnvironmentalDamageType type, uint32 damage)
     // Absorb, resist some environmental damage type
     uint32 absorb = 0;
     uint32 resist = 0;
-    if (type == DAMAGE_LAVA)
+
+    if ((type == DAMAGE_LAVA) || (type == DAMAGE_FIRE))
         CalculateDamageAbsorbAndResist(this, SPELL_SCHOOL_MASK_FIRE, DIRECT_DAMAGE, damage, &absorb, &resist, NULL);
     else if (type == DAMAGE_SLIME)
         CalculateDamageAbsorbAndResist(this, SPELL_SCHOOL_MASK_NATURE, DIRECT_DAMAGE, damage, &absorb, &resist, NULL);
@@ -1226,8 +1228,6 @@ void Player::Update(uint32 update_diff, uint32 p_time)
         }
     }
 
-    m_regenTimer -= update_diff;
-
     if (m_weaponChangeTimer > 0)
     {
         if (update_diff >= m_weaponChangeTimer)
@@ -1262,7 +1262,14 @@ void Player::Update(uint32 update_diff, uint32 p_time)
         m_cannotBeDetectedTimer -= update_diff;
 
     if (isAlive())
+    {
+        m_regenTimer -= update_diff;
         RegenerateAll();
+    }
+    else
+    {
+        m_regenTimer = 0;
+    }
 
     if (m_deathState == JUST_DIED)
         KillPlayer();
@@ -1886,6 +1893,9 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             CombatStop();
         }
 
+        if (!IsWithinDist3d(x, y, z, GetMap()->GetVisibilityDistance()))
+            RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED);
+
         // this will be used instead of the current location in SaveToDB
         m_teleport_dest = WorldLocation(mapid, x, y, z, orientation);
         DisableSpline();
@@ -1942,6 +1952,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             SetSelectionGuid(ObjectGuid());
             CombatStop();
             ResetContestedPvP();
+            RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED);
 
             // reset extraAttack counter
             ResetExtraAttacks();
@@ -2174,7 +2185,6 @@ void Player::RegenerateAll()
     }
 
     Regenerate(POWER_ENERGY);
-
     Regenerate(POWER_MANA);
 
     m_regenTimer += REGEN_TIME_FULL;
@@ -2280,6 +2290,10 @@ void Player::RegenerateHealth()
     // always regeneration bonus (including combat)
     // This function is called every 2 seconds.
     addvalue += HealthIncreaseRate * 2.0f * (GetTotalAuraModifier(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT) / 5.0f);
+
+    // Health fractions get carried to the next tick
+    addvalue += m_carryHealthRegen;
+    m_carryHealthRegen = addvalue - int32(addvalue);
 
     if (addvalue < 0)
         addvalue = 0;
@@ -6131,9 +6145,41 @@ uint32 Player::GetLevelFromDB(ObjectGuid guid)
     return level;
 }
 
+void Player::DismountCheck()
+{
+    if (IsMounted())
+    {
+        auto auras = this->GetAurasByType(SPELL_AURA_MOUNTED);
+
+        for (auto& aura : auras)
+        {
+            Spell mountSpell(this, aura->GetSpellProto(), true);
+            SpellCastResult pCheck = mountSpell.CheckCast(true);
+
+            if (pCheck == SPELL_FAILED_NO_MOUNTS_ALLOWED || pCheck == SPELL_FAILED_NOT_HERE)
+            {
+                RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+                Unmount(true);
+            }
+        }
+    }
+}
+
+void Player::SetTransport(Transport* t)
+{
+    if (t) // don't bother checking when exiting a transport
+    {
+        DismountCheck();
+    }
+
+    WorldObject::SetTransport(t);
+}
+
 void Player::UpdateArea(uint32 newArea)
 {
     m_areaUpdateId    = newArea;
+
+    DismountCheck();
 
     const auto *areaEntry = AreaEntry::GetById(newArea);
 
@@ -6286,7 +6332,7 @@ void Player::CheckDuelDistance(time_t currTime)
             CombatStopWithPets(true);
             if (duel->opponent)
                 duel->opponent->CombatStopWithPets(true);
-            
+
             DuelComplete(DUEL_FLED);
         }
     }
@@ -6417,7 +6463,7 @@ void Player::_ApplyItemMods(Item *item, uint8 slot, bool apply)
         _ApplyItemBonuses(proto, slot, false);
 
         if (slot == EQUIPMENT_SLOT_RANGED)
-            _ApplyAmmoBonuses(); 
+            _ApplyAmmoBonuses();
     }
 
     DEBUG_LOG("_ApplyItemMods complete.");

@@ -2337,7 +2337,7 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
             }
 
             //fix tauren scaling
-            if (!target->getTransForm() && target->GetShapeshiftForm() == FORM_NONE && target->getRace() == RACE_TAUREN)
+            if (target->getRace() == RACE_TAUREN && target->GetDisplayId() == target->GetNativeDisplayId())
             {
                 float mod_x = 0;
                 if (target->getGender() == GENDER_MALE)
@@ -2363,21 +2363,21 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
             if (target->GetTypeId() == TYPEID_UNIT)
                 ((Creature*)target)->LoadEquipment(((Creature*)target)->GetCreatureInfo()->equipmentId, true);
 
+            //fix tauren scaling
+            if (target->getRace() == RACE_TAUREN)
+            {
+                float mod_x = 0;
+                if (target->getGender() == GENDER_MALE)
+                    mod_x = -25.9f; // 0.741 * 1.35 ~= 1.0
+                else
+                    mod_x = -20.0f; // 0.8 * 1.25    = 1.0
+                target->ApplyPercentModFloatValue(OBJECT_FIELD_SCALE_X, mod_x, apply);
+            }
+
             // re-apply some from still active with preference negative cases
             Unit::AuraList const& otherTransforms = target->GetAurasByType(SPELL_AURA_TRANSFORM);
             if (!otherTransforms.empty())
             {
-                //fix tauren scaling
-                if (target->getRace() == RACE_TAUREN && target->GetShapeshiftForm() == FORM_NONE)
-                {
-                    float mod_x = 0;
-                    if (target->getGender() == GENDER_MALE)
-                        mod_x = -25.9f; // 0.741 * 1.35 ~= 1.0
-                    else
-                        mod_x = -20.0f; // 0.8 * 1.25    = 1.0
-                    target->ApplyPercentModFloatValue(OBJECT_FIELD_SCALE_X, mod_x, apply);
-                }
-            
                 // look for other transform auras
                 Aura* handledAura = *otherTransforms.rbegin();
                 for (Unit::AuraList::const_reverse_iterator i = otherTransforms.rbegin(); i != otherTransforms.rend(); ++i)
@@ -2393,17 +2393,6 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
             }
             else //reapply shapeshifting, there should be only one.
             {
-                //fix tauren scaling
-                if (target->getRace() == RACE_TAUREN)
-                {
-                    float mod_x = 0;
-                    if (target->getGender() == GENDER_MALE)
-                        mod_x = -25.9f; // 0.741 * 1.35 ~= 1.0
-                    else
-                        mod_x = -20.0f; // 0.8 * 1.25    = 1.0
-                    target->ApplyPercentModFloatValue(OBJECT_FIELD_SCALE_X, mod_x, apply);
-                }
-                
                 Unit::AuraList const& shapeshift = target->GetAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
                 if (!shapeshift.empty() && !shapeshift.front()->IsInUse())
                     shapeshift.front()->HandleAuraModShapeshift(true,false);
@@ -2788,11 +2777,12 @@ void Aura::HandleModCharm(bool apply, bool Real)
         return;
 
     Unit* caster = GetCaster();
-    if (!caster)
-        return;
 
     if (apply)
     {
+        if (!caster)
+            return;
+
         // is it really need after spell check checks?
         target->RemoveSpellsCausingAura(SPELL_AURA_MOD_CHARM, GetHolder());
         target->RemoveSpellsCausingAura(SPELL_AURA_MOD_POSSESS, GetHolder());
@@ -2885,7 +2875,7 @@ void Aura::HandleModCharm(bool apply, bool Real)
                 target->setFaction(cinfo->faction_A);
 
             // restore UNIT_FIELD_BYTES_0
-            if (cinfo && caster->GetTypeId() == TYPEID_PLAYER && caster->getClass() == CLASS_WARLOCK && cinfo->type == CREATURE_TYPE_DEMON)
+            if (cinfo && caster && caster->GetTypeId() == TYPEID_PLAYER && caster->getClass() == CLASS_WARLOCK && cinfo->type == CREATURE_TYPE_DEMON)
             {
                 // DB must have proper class set in field at loading, not req. restore, including workaround case at apply
                 // target->SetByteValue(UNIT_FIELD_BYTES_0, 1, cinfo->unit_class);
@@ -2897,10 +2887,12 @@ void Aura::HandleModCharm(bool apply, bool Real)
             }
         }
 
-        caster->SetCharm(nullptr);
-
-        if (caster->GetTypeId() == TYPEID_PLAYER)
-            ((Player*)caster)->RemovePetActionBar();
+        if (caster)
+        {
+            caster->SetCharm(nullptr);
+            if (caster->GetTypeId() == TYPEID_PLAYER)
+                ((Player*)caster)->RemovePetActionBar();
+        }
 
         target->UpdateControl();
         target->CombatStop(true);
@@ -2916,7 +2908,8 @@ void Aura::HandleModCharm(bool apply, bool Real)
         {
             if (pTargetCrea->AI() && pTargetCrea->AI()->SwitchAiAtControl())
                 pTargetCrea->AIM_Initialize();
-            pTargetCrea->AttackedBy(caster);
+            if (caster)
+                pTargetCrea->AttackedBy(caster);
         }
         else if (Player* pPlayer = target->ToPlayer())
             pPlayer->RemoveAI();
@@ -4912,7 +4905,7 @@ void Aura::PeriodicTick(SpellEntry const* sProto, AuraType auraType, uint32 data
                 return;
 
             if (spellProto->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
-                    pCaster->SpellHitResult(target, spellProto, false) != SPELL_MISS_NONE)
+                    pCaster->SpellHitResult(target, spellProto, GetEffIndex(), false) != SPELL_MISS_NONE)
                 return;
 
             // Check for immune (not use charges)
@@ -5021,7 +5014,7 @@ void Aura::PeriodicTick(SpellEntry const* sProto, AuraType auraType, uint32 data
                 return;
 
             if (spellProto->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
-                    pCaster->SpellHitResult(target, spellProto, false) != SPELL_MISS_NONE)
+                    pCaster->SpellHitResult(target, spellProto, GetEffIndex(), false) != SPELL_MISS_NONE)
                 return;
 
             // Check for immune
@@ -5211,7 +5204,7 @@ void Aura::PeriodicTick(SpellEntry const* sProto, AuraType auraType, uint32 data
                 return;
 
             if (GetSpellProto()->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
-                    pCaster->SpellHitResult(target, spellProto, false) != SPELL_MISS_NONE)
+                    pCaster->SpellHitResult(target, spellProto, GetEffIndex(), false) != SPELL_MISS_NONE)
                 return;
 
             // Check for immune (not use charges)
@@ -5525,11 +5518,11 @@ void Aura::HandleManaShield(bool apply, bool Real)
             float DoneActualBenefit = 0.0f;
 
             // Mana Shield
-            // +50% from +spd bonus
-            if (GetSpellProto()->IsFitToFamily<SPELLFAMILY_MAGE, CF_MAGE_MANA_SHIELD>())
-                DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(GetSpellProto())) * 0.5f;
+            // 0% coeff in vanilla (changed patch 2.4.0)
+            // if (GetSpellProto()->IsFitToFamily<SPELLFAMILY_MAGE, CF_MAGE_MANA_SHIELD>())
+            //    DoneActualBenefit = caster->SpellBaseDamageBonusDone(GetSpellSchoolMask(GetSpellProto())) * 0.5f;
 
-            DoneActualBenefit *= caster->CalculateLevelPenalty(GetSpellProto());
+            // DoneActualBenefit *= caster->CalculateLevelPenalty(GetSpellProto());
 
             m_modifier.m_amount += (int32)DoneActualBenefit;
         }
@@ -5940,11 +5933,19 @@ bool SpellAuraHolder::IsNeedVisibleSlot(Unit const* caster) const
 {
     bool totemAura = caster && caster->GetTypeId() == TYPEID_UNIT && ((Creature*)caster)->IsTotem();
 
+    // Check for persistent area auras that only do damage. If it has a secondary effect, it takes
+    // up a slot
+    bool persistent = m_spellProto->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_PERSISTENT_AREA_AURA;
+    bool persistentWithSecondaryEffect = false;
+    
     for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
     {
-        if (!m_auras[i])
+        // Check for persistent aura here since the effect aura is applied to the holder 
+        // by a dynamic object as the target passes through the object field, meaning 
+        // m_auras will be unset when this method is called (initialization)
+        if (!m_auras[i] && !persistent)
             continue;
-
+            
         // special area auras cases
         switch (m_spellProto->Effect[i])
         {
@@ -5952,12 +5953,36 @@ bool SpellAuraHolder::IsNeedVisibleSlot(Unit const* caster) const
             case SPELL_EFFECT_APPLY_AREA_AURA_PARTY:
                 // passive auras (except totem auras) do not get placed in caster slot
                 return (m_target != caster || totemAura || !m_isPassive) && m_auras[i]->GetModifier()->m_auraname != SPELL_AURA_NONE;
+                
+                break;
+            case SPELL_EFFECT_PERSISTENT_AREA_AURA:
+                // If spell aura applies something other than plain damage, it takes
+                // up a debuff slot.
+                if (m_spellProto->EffectApplyAuraName[i] != SPELL_AURA_PERIODIC_DAMAGE)
+                    persistentWithSecondaryEffect = true;
+                    
+                break;
             default:
                 break;
         }
     }
 
-
+    /*  Persistent area auras such as Blizzard/RoF/Volley do not get require debuff slots
+        since they just do area damage with no additional effects. However, spells like
+        Hurricane do since they have a secondary effect attached to them. There are enough
+        persistent area spells in-game that making a switch for all of them is a bit 
+        unreasonable. Any spell with a secondary affect should take up a slot. Note
+        that most (usable) persistent spells only deal damage.
+        
+        It was considered whether spells with secondary effects should still deal damage,
+        even if there is no room for the other effect, however the debuff tooltip states
+        that the spell causes damage AND slows, therefore it must take a debuff slot.
+     */
+    if (persistent && !persistentWithSecondaryEffect)
+    {
+        return false;
+    }
+    
     // necessary for some spells, e.g. Immolate visual passive 28330
     if (m_spellProto->SpellVisual)
         return true;
@@ -6322,6 +6347,10 @@ void SpellAuraHolder::UpdateAuraDuration() const
     }
 }
 
+void SpellAuraHolder::SetAffectedByDebuffLimit(bool isAffectedByDebuffLimit)
+{
+    m_debuffLimitAffected = isAffectedByDebuffLimit;
+}
 
 /** NOSTALRIUS
  Debuff limitation

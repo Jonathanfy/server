@@ -434,6 +434,10 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
             if (spellInfo->Id == 13161)
                 return SPELL_ASPECT;
 
+            // Shadow Vulnerability
+            if (spellInfo->SpellIconID == 213 && spellInfo->EffectApplyAuraName[0] == SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN)
+                return SPELL_SHADOW_VULN;
+
             // Food / Drinks (mostly)
             if (spellInfo->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED)
             {
@@ -596,6 +600,7 @@ bool IsSingleFromSpellSpecificSpellRanksPerTarget(SpellSpecific spellSpec1, Spel
         case SPELL_AURA:
         case SPELL_CURSE:
         case SPELL_ASPECT:
+        case SPELL_SHADOW_VULN:
             return spellSpec1 == spellSpec2;
         default:
             return false;
@@ -704,7 +709,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex, U
 
     // Hellfire. Damages the caster, but is still positive !
     // (Has same SpellFamilyFlags as Soul Fire oO)
-    if (spellproto->IsFitToFamily<SPELLFAMILY_WARLOCK, CF_WARLOCK_HELLFIRE>() && spellproto->SpellIconID == 937)
+    if (spellproto->IsFitToFamily<SPELLFAMILY_WARLOCK, CF_WARLOCK_HELLFIRE>() && spellproto->SpellIconID == 937 && spellproto->SpellVisual == 5423)
         return true;
 
     switch (spellproto->Effect[effIndex])
@@ -729,6 +734,9 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex, U
             return true;
         // Negative Effects
         case SPELL_EFFECT_INSTAKILL:
+            // Suicide is a positive spell - ex. Garr Massive Eruption
+            if (spellproto->EffectImplicitTargetA[effIndex] == TARGET_SELF && spellproto->EffectImplicitTargetB[effIndex] == TARGET_NONE)
+                return true;
             // Sacrifice is a positive spell - for the warlock :)
             if (spellproto->IsFitToFamily<SPELLFAMILY_WARLOCK, CF_WARLOCK_VOIDWALKER_SPELLS>())
                 return true;

@@ -721,8 +721,12 @@ void Spell::prepareDataForTriggerSystem()
                     m_procAttacker |= PROC_FLAG_SUCCESSFUL_POSITIVE_AOE_HIT;
                     m_procVictim   |= PROC_FLAG_TAKEN_POSITIVE_AOE;
                 }
-                else if (!IsTriggered())
+                else if (!IsTriggered()) 
+                {
                     m_procAttacker |= PROC_FLAG_SUCCESSFUL_SPELL_CAST;
+                    if (m_powerCost > 0 && m_spellInfo->powerType == POWER_MANA)
+                        m_procAttacker |= PROC_FLAG_SUCCESSFUL_MANA_SPELL_CAST;
+                }  
             }
             // Wands auto attack
             else if (m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_AUTOREPEAT_FLAG)
@@ -740,7 +744,11 @@ void Spell::prepareDataForTriggerSystem()
                     m_procVictim   |= PROC_FLAG_TAKEN_AOE_SPELL_HIT;
                 }
                 else if (!IsTriggered())
+                {
                     m_procAttacker |= PROC_FLAG_SUCCESSFUL_SPELL_CAST;
+                    if (m_powerCost > 0 && m_spellInfo->powerType == POWER_MANA)
+                        m_procAttacker |= PROC_FLAG_SUCCESSFUL_MANA_SPELL_CAST;
+                }
             }
             break;
         }
@@ -806,7 +814,7 @@ void Spell::AddUnitTarget(Unit* pVictim, SpellEffectIndex effIndex)
     target.damage = 0;
 
     // Calculate hit result
-    target.missCondition = m_caster->SpellHitResult(pVictim, m_spellInfo, m_canReflect, this);
+    target.missCondition = m_caster->SpellHitResult(pVictim, m_spellInfo, effIndex, m_canReflect, this);
 
     // spell fly from visual cast object
     WorldObject* affectiveObject = GetAffectiveCasterObject();
@@ -833,7 +841,7 @@ void Spell::AddUnitTarget(Unit* pVictim, SpellEffectIndex effIndex)
     if (target.missCondition == SPELL_MISS_REFLECT)
     {
         // Calculate reflected spell result on caster
-        target.reflectResult =  m_caster->SpellHitResult(m_caster, m_spellInfo, m_canReflect, this);
+        target.reflectResult =  m_caster->SpellHitResult(m_caster, m_spellInfo, effIndex, m_canReflect, this);
 
         if (target.reflectResult == SPELL_MISS_REFLECT)     // Impossible reflect again, so simply deflect spell
             target.reflectResult = SPELL_MISS_PARRY;
@@ -1223,24 +1231,27 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
                             break;
                     }
 
+        // Fill base damage struct (unitTarget - is real spell target)
+        SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, GetFirstSchoolInMask(m_spellSchoolMask));
+        procEx = createProcExtendMask(&damageInfo, missInfo);
+        // Do triggers for unit (reflect triggers passed on hit phase for correct drop charge)
+        uint32 dmg = 0;
+        // Sometime we need to manually set dmg != 0 (arcane projectile triggers a spell that deals damage)
+        // Cant check SpellFamilyFlags & 0x40800 because some spells have strange SpellFamilyFlags=0x7FFFFFFF (sheep, ...)
+        if (m_spellInfo->SpellFamilyName == SPELLFAMILY_MAGE && m_spellInfo->SpellFamilyFlags == 0x40800)
+            dmg = 1;
+
+        // Periodic spells:
+        // Trigger spell cast procs and forward the damage / heal procs to the aura
         if (foundDamageOrHealAura)
         {
-            m_spellAuraHolder->spellFirstHitAttackerProcFlags = procAttacker;
+            m_spellAuraHolder->spellFirstHitAttackerProcFlags = procAttacker & ~(PROC_FLAG_SUCCESSFUL_SPELL_CAST | PROC_FLAG_SUCCESSFUL_MANA_SPELL_CAST);
             m_spellAuraHolder->spellFirstHitTargetProcFlags = procVictim;
+            procAttacker &= (PROC_FLAG_SUCCESSFUL_SPELL_CAST | PROC_FLAG_SUCCESSFUL_MANA_SPELL_CAST);
+            procVictim = 0;
+            dmg = 1;
         }
-        else
-        {
-            // Fill base damage struct (unitTarget - is real spell target)
-            SpellNonMeleeDamage damageInfo(caster, unitTarget, m_spellInfo->Id, GetFirstSchoolInMask(m_spellSchoolMask));
-            procEx = createProcExtendMask(&damageInfo, missInfo);
-            // Do triggers for unit (reflect triggers passed on hit phase for correct drop charge)
-            uint32 dmg = 0;
-            // Sometime we need to manually set dmg != 0 (arcane projectile triggers a spell that deals damage)
-            // Cant check SpellFamilyFlags & 0x40800 because some spells have strange SpellFamilyFlags=0x7FFFFFFF (sheep, ...)
-            if (m_spellInfo->SpellFamilyName == SPELLFAMILY_MAGE && m_spellInfo->SpellFamilyFlags == 0x40800)
-                dmg = 1;
-            caster->ProcDamageAndSpell(unit, real_caster ? procAttacker : PROC_FLAG_NONE, procVictim, procEx, dmg, m_attackType, m_spellInfo, this);
-        }
+        caster->ProcDamageAndSpell(unit, real_caster ? procAttacker : PROC_FLAG_NONE, procVictim, procEx, dmg, m_attackType, m_spellInfo, this);
     }
 
     if (missInfo != SPELL_MISS_NONE)
@@ -1280,10 +1291,14 @@ void Spell::DoSpellHitOnUnit(Unit *unit, uint32 effectMask)
     if (!unit)
         return;
 
-    if (!effectMask)
-        return;
-
     Unit* realCaster = GetAffectiveCaster();
+
+    if (!effectMask)
+    {
+        if (realCaster && !unit->isInCombat())
+            unit->AttackedBy(realCaster);
+        return;
+    }
 
     // Nostalrius: IsAuraResist pour les ModMechanicResistance des effets.
     if (IsSpellAppliesAura(m_spellInfo, effectMask) && unit->IsAuraResist(m_spellInfo))
@@ -3242,7 +3257,11 @@ void Spell::cast(bool skipCheck)
             procAttacker = (m_procAttacker & PROC_FLAG_ON_TRAP_ACTIVATION);
         uint32 procAttackerFlags = procAttacker;
         if (!IsTriggered())
-            procAttackerFlags |= PROC_FLAG_SUCCESSFUL_SPELL_CAST | PROC_FLAG_SUCCESSFUL_AOE;
+        {
+            procAttackerFlags |= (PROC_FLAG_SUCCESSFUL_SPELL_CAST | PROC_FLAG_SUCCESSFUL_AOE);
+            if (m_powerCost > 0 && m_spellInfo->powerType == POWER_MANA)
+                procAttackerFlags |= PROC_FLAG_SUCCESSFUL_MANA_SPELL_CAST;
+        }
         m_caster->ProcDamageAndSpell(nullptr, procAttackerFlags, PROC_FLAG_NONE, PROC_EX_NORMAL_HIT, 1, m_attackType, m_spellInfo, this);
     }
 
@@ -4544,6 +4563,10 @@ SpellCastResult Spell::CheckCast(bool strict)
     }
     // Fin Nostalrius
 
+    // Prevent casting while sitting unless the spell allows it
+    if (!m_IsTriggeredSpell && m_caster->IsSitState() && !(m_spellInfo->Attributes & SPELL_ATTR_CASTABLE_WHILE_SITTING))
+        return SPELL_FAILED_NOT_STANDING;
+    
     /*  Check cooldowns to prevent cheating (ignore passive spells, that client side visual only)
 
         If the cast is an item cast, check the spell proto on the item for the category
@@ -4896,7 +4919,7 @@ SpellCastResult Spell::CheckCast(bool strict)
     // Nostalrius: impossible to cast spells while banned / feared / confused ...
     // Except divine shields, pvp trinkets for example
     // TODO: This condition allows an antifear item to be used while stuned for example.
-    if (!m_IsTriggeredSpell && !IsSpellAppliesAura(m_spellInfo, SPELL_AURA_SCHOOL_IMMUNITY) && !IsSpellAppliesAura(m_spellInfo, SPELL_AURA_MECHANIC_IMMUNITY) &&
+    if (!m_IsTriggeredSpell && !IsSpellHaveAura(m_spellInfo, SPELL_AURA_SCHOOL_IMMUNITY) && !IsSpellHaveAura(m_spellInfo, SPELL_AURA_MECHANIC_IMMUNITY) &&
             m_caster->hasUnitState(UNIT_STAT_ISOLATED | UNIT_STAT_STUNNED | UNIT_STAT_PENDING_STUNNED | UNIT_STAT_CONFUSED | UNIT_STAT_FLEEING))
         return SPELL_FAILED_DONT_REPORT;
 
