@@ -1411,6 +1411,7 @@ CreatureAI* GetAI_npc_gnomish_battle_chicken(Creature* pCreature)
 /*######
 ## arcanite dragonling
 ######*/
+
 enum
 {
     SPELL_Flame_Buffet = 9574,
