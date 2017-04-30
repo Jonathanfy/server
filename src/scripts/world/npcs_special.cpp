@@ -1485,7 +1485,8 @@ CreatureAI* GetAI_npc_arcanite_dragonling_dragonling(Creature* pCreature)
 ######*/
 enum
 {
-	SPELL_HEALING_TOUCH = 11431
+	SPELL_HEALING_TOUCH = 11431,
+	SPELL_LIGHTNING_BOLT = 6041
 };
 
 struct npc_TimermawAncestorAI : ScriptedPetAI
@@ -1495,11 +1496,15 @@ struct npc_TimermawAncestorAI : ScriptedPetAI
 		m_creature->SetCanModifyStats(true);
 
 		if (m_creature->GetCharmInfo())
-			m_creature->GetCharmInfo()->SetReactState(REACT_AGGRESSIVE);
+			m_creature->GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
 
 		npc_TimermawAncestorAI::Reset();
+		m_healingTouchTimer = 0;
+		m_lightningboltTimer = urand(0, 20000);
 	}
-
+	uint32 m_healingTouchTimer;
+	uint32 m_lightningboltTimer;
+	bool m_healingTouchTriggered = false;
 
 
 
@@ -1516,12 +1521,31 @@ struct npc_TimermawAncestorAI : ScriptedPetAI
 
 	void UpdatePetAI(const uint32 uiDiff) override
 	{
-		if(m_creature->GetOwner()->HealthBelowPct(50))
-		{ 
-		    int32 healing = 500;
-			m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &healing, nullptr, nullptr, true);
+		//heal
+		
+		if(!m_healingTouchTriggered){
+			if (m_creature->GetOwner()->HealthBelowPct(50))
+			{
+				int32 healing = 500;
+				m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &healing, nullptr, nullptr, true);
+				m_healingTouchTimer = 600000;
+			}
+		
 		}
+		else 
+			m_healingTouchTimer -= uiDiff;
 
+		if (m_healingTouchTimer <= 0) 
+			m_healingTouchTriggered = true;
+		
+		//lightning bolt
+		if (m_lightningboltTimer < uiDiff)
+		{
+			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, CAST_TRIGGERED) == CAST_OK)
+				m_lightningboltTimer = urand(0, 10000);
+		}
+		else
+			m_lightningboltTimer -= uiDiff;
 
 		ScriptedPetAI::UpdatePetAI(uiDiff);
 	}
