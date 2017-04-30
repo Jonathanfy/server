@@ -1485,8 +1485,7 @@ CreatureAI* GetAI_npc_arcanite_dragonling_dragonling(Creature* pCreature)
 ######*/
 enum
 {
-	SPELL_HEALING_TOUCH = 11431,
-	SPELL_LIGHTNING_BOLT = 6041
+	SPELL_HEALING_TOUCH = 11431
 };
 
 struct npc_TimermawAncestorAI : ScriptedPetAI
@@ -1529,6 +1528,7 @@ struct npc_TimermawAncestorAI : ScriptedPetAI
 				int32 healing = 500;
 				m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &healing, nullptr, nullptr, true);
 				m_healingTouchTimer = 600000;
+				m_healingTouchTriggered = true;
 			}
 		
 		}
@@ -1536,7 +1536,7 @@ struct npc_TimermawAncestorAI : ScriptedPetAI
 			m_healingTouchTimer -= uiDiff;
 
 		if (m_healingTouchTimer <= 0) 
-			m_healingTouchTriggered = true;
+			m_healingTouchTriggered = false;
 		
 		//lightning bolt
 		if (m_lightningboltTimer < uiDiff)
