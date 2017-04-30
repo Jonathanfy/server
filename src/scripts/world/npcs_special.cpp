@@ -1489,9 +1489,9 @@ enum
    SPELL_LIGHTNING_BOLT = 6041
 };
 
-struct npc_TimermawAncestorAI : ScriptedPetAI
+struct npc_TimbermawAncestorAI : ScriptedPetAI
 {
-	explicit npc_TimermawAncestorAI(Creature* pCreature) : ScriptedPetAI(pCreature)
+	explicit npc_TimbermawAncestorAI(Creature* pCreature) : ScriptedPetAI(pCreature)
 	{
 		m_creature->SetCanModifyStats(true);
 
@@ -1552,9 +1552,9 @@ struct npc_TimermawAncestorAI : ScriptedPetAI
 	}
 };
 
-CreatureAI* GetAI_TimermawAncestor(Creature* pCreature)
+CreatureAI* GetAI_TimbermawAncestor(Creature* pCreature)
 {
-	return new npc_TimermawAncestorAI(pCreature);
+	return new npc_TimbermawAncestorAI(pCreature);
 }
 
 /*######
@@ -2789,7 +2789,7 @@ void AddSC_npcs_special()
     newscript->RegisterSelf();
 	
 	newscript = new Script;
-	newscript->Name = "npc_TimermawAncestor";
+	newscript->Name = "npc_TimbermawAncestor";
 	newscript->GetAI = &GetAI_TimermawAncestor;
 	newscript->RegisterSelf();
 
