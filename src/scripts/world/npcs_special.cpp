@@ -1518,8 +1518,8 @@ struct npc_TimermawAncestorAI : ScriptedPetAI
 	{
 		if(m_creature->GetOwner()->HealthBelowPct(50))
 		{ 
-		    int32 damage = 500;
-			m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &damage, nullptr, nullptr, true);
+		    int32 healing = 500;
+			m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &healing, nullptr, nullptr, true);
 		}
 
 
