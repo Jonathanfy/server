@@ -1479,6 +1479,59 @@ CreatureAI* GetAI_npc_arcanite_dragonling_dragonling(Creature* pCreature)
 {
     return new npc_arcanite_dragonling_dragonlingAI(pCreature);
 }
+
+/*######
+## Timbermaw Ancestor
+######*/
+enum
+{
+	SPELL_HEALING_TOUCH = 11431
+};
+
+struct npc_TimermawAncestorAI : ScriptedPetAI
+{
+	explicit npc_TimermawAncestorAI(Creature* pCreature) : ScriptedPetAI(pCreature)
+	{
+		m_creature->SetCanModifyStats(true);
+
+		if (m_creature->GetCharmInfo())
+			m_creature->GetCharmInfo()->SetReactState(REACT_AGGRESSIVE);
+
+		npc_TimermawAncestorAI::Reset();
+	}
+
+
+
+
+	void Reset() override
+	{
+
+	}
+
+	void DamageTaken(Unit* pDoneBy, uint32 &uiDamage) override
+	{
+
+		ScriptedPetAI::DamageTaken(pDoneBy, uiDamage);
+	}
+
+	void UpdatePetAI(const uint32 uiDiff) override
+	{
+		if(m_creature->GetOwner()->HealthBelowPct(50))
+		{ 
+		    int32 damage = 500;
+			m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &damage, nullptr, nullptr, true);
+		}
+
+
+		ScriptedPetAI::UpdatePetAI(uiDiff);
+	}
+};
+
+CreatureAI* GetAI_TimermawAncestor(Creature* pCreature)
+{
+	return new npc_TimermawAncestorAI(pCreature);
+}
+
 /*######
 ## npc_the_cleaner
 ######*/
@@ -2709,7 +2762,12 @@ void AddSC_npcs_special()
     newscript->Name = "npc_arcanite_dragonling";
     newscript->GetAI = &GetAI_npc_arcanite_dragonling_dragonling;
     newscript->RegisterSelf();
-    
+	
+	newscript = new Script;
+	newscript->Name = "npc_TimermawAncestor";
+	newscript->GetAI = &GetAI_TimermawAncestor;
+	newscript->RegisterSelf();
+
     newscript = new Script;
     newscript->Name = "npc_the_cleaner";
     newscript->GetAI = &GetAI_npc_the_cleaner;
