@@ -1485,7 +1485,8 @@ CreatureAI* GetAI_npc_arcanite_dragonling_dragonling(Creature* pCreature)
 ######*/
 enum
 {
-	SPELL_HEALING_TOUCH = 11431
+   SPELL_HEALING_TOUCH = 11431,
+   SPELL_LIGHTNING_BOLT = 6041
 };
 
 struct npc_TimermawAncestorAI : ScriptedPetAI
