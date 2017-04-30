@@ -1480,35 +1480,36 @@ CreatureAI* GetAI_npc_arcanite_dragonling_dragonling(Creature* pCreature)
     return new npc_arcanite_dragonling_dragonlingAI(pCreature);
 }
 
+
 /*######
 ## Timbermaw Ancestor
 ######*/
 enum
 {
 	SPELL_HEALING_TOUCH = 11431,
-	SPELL_LIGHTNING_BOLT = 6041
+	SPELL_LIGHTNING_BOLT = 10391
 };
 
-struct npc_timbermawAncestorAI : ScriptedPetAI
+struct npc_timbermaw_ancestorAI : ScriptedPetAI
 {
-	explicit npc_timbermawAncestorAI(Creature* pCreature) : ScriptedPetAI(pCreature)
+	explicit npc_timbermaw_ancestorAI(Creature* pCreature) : ScriptedPetAI(pCreature)
 	{
-		m_creature->SetCanModifyStats(true);
+        m_creature->SetCanModifyStats(true);
 
-		if (m_creature->GetCharmInfo())
-			m_creature->GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
+       if (m_creature->GetCharmInfo())
+         m_creature->GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
 
-		npc_timbermawAncestorAI::Reset();
-		m_healingTouchTimer = 0;
-		m_lightningboltTimer = urand(0, 20000);
+        npc_timbermaw_ancestorAI::Reset();
+        m_healingTouchTimer = 0;
+        m_lightningboltTimer = urand(0, 20000);
 	}
-	uint32 m_healingTouchTimer;
-	uint32 m_lightningboltTimer;
-	bool m_healingTouchTriggered = false;
+    uint32 m_healingTouchTimer;
+    uint32 m_lightningboltTimer;
+    bool m_healingTouchTriggered = false;
 
 
 
-	void Reset() override
+    void Reset() override
 	{
 
 	}
@@ -1516,7 +1517,7 @@ struct npc_timbermawAncestorAI : ScriptedPetAI
 	void DamageTaken(Unit* pDoneBy, uint32 &uiDamage) override
 	{
 
-		ScriptedPetAI::DamageTaken(pDoneBy, uiDamage);
+       ScriptedPetAI::DamageTaken(pDoneBy, uiDamage);
 	}
 
 	void UpdatePetAI(const uint32 uiDiff) override
@@ -1526,10 +1527,10 @@ struct npc_timbermawAncestorAI : ScriptedPetAI
 		if(!m_healingTouchTriggered){
 			if (m_creature->GetOwner()->HealthBelowPct(50))
 			{
-				int32 healing = 500;
-				m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &healing, nullptr, nullptr, true);
-				m_healingTouchTimer = 600000;
-				m_healingTouchTriggered = true;
+                int32 healing = 500;
+                m_creature->CastCustomSpell(m_creature->GetOwner(), SPELL_HEALING_TOUCH, &healing, nullptr, nullptr, true);
+                m_healingTouchTimer = 600000;
+                m_healingTouchTriggered = true;
 			}
 		
 		}
@@ -1537,24 +1538,24 @@ struct npc_timbermawAncestorAI : ScriptedPetAI
 			m_healingTouchTimer -= uiDiff;
 
 		if (m_healingTouchTimer <= 0) 
-			m_healingTouchTriggered = false;
+             m_healingTouchTriggered = false;
 		
 		//lightning bolt
 		if (m_lightningboltTimer < uiDiff)
 		{
-			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, CAST_TRIGGERED) == CAST_OK)
+          if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, CAST_TRIGGERED) == CAST_OK)
 				m_lightningboltTimer = urand(0, 20000);
 		}
 		else
-			m_lightningboltTimer -= uiDiff;
+           m_lightningboltTimer -= uiDiff;
 
-		ScriptedPetAI::UpdatePetAI(uiDiff);
+      ScriptedPetAI::UpdatePetAI(uiDiff);
 	}
 };
 
-CreatureAI* GetAI_timbermawAncestor(Creature* pCreature)
+CreatureAI* GetAI_timbermaw_ancestor(Creature* pCreature)
 {
-	return new npc_timbermawAncestorAI(pCreature);
+	return new npc_timbermaw_ancestorAI(pCreature);
 }
 
 /*######
@@ -2789,8 +2790,8 @@ void AddSC_npcs_special()
     newscript->RegisterSelf();
 	
 	newscript = new Script;
-	newscript->Name = "npc_TimbermawAncestor";
-	newscript->GetAI = &GetAI_timbermawAncestor;
+	newscript->Name = "npc_timbermaw_ancestor";
+	newscript->GetAI = &GetAI_timbermaw_ancestor;
 	newscript->RegisterSelf();
 
     newscript = new Script;
