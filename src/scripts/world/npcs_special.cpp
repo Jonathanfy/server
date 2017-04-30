@@ -1542,7 +1542,7 @@ struct npc_TimermawAncestorAI : ScriptedPetAI
 		if (m_lightningboltTimer < uiDiff)
 		{
 			if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, CAST_TRIGGERED) == CAST_OK)
-				m_lightningboltTimer = urand(0, 10000);
+				m_lightningboltTimer = urand(0, 20000);
 		}
 		else
 			m_lightningboltTimer -= uiDiff;
