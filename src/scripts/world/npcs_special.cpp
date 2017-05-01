@@ -1519,11 +1519,13 @@ struct npc_timbermaw_ancestorAI : ScriptedPetAI
 
 	void UpdatePetAI(const uint32 uiDiff) override
 	{
+        //heal if under 50%
         if (m_creature->GetOwner()->HealthBelowPct(50))
         {
             DoCastSpellIfCan(m_creature->GetOwner(), SPELL_HEALING_TOUCH, false);
         }
-        else {
+        //cast lightning bolt
+        else 
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, false);
 
       ScriptedPetAI::UpdatePetAI(uiDiff);
