@@ -1480,61 +1480,72 @@ CreatureAI* GetAI_npc_arcanite_dragonling_dragonling(Creature* pCreature)
     return new npc_arcanite_dragonling_dragonlingAI(pCreature);
 }
 
-
 /*######
 ## Timbermaw Ancestor
 ######*/
 enum
 {
-	SPELL_HEALING_TOUCH = 23381,
-	SPELL_LIGHTNING_BOLT = 10391
+  SPELL_HEALING_TOUCH = 23381,
+  SPELL_LIGHTNING_BOLT = 10391
 };
 
 struct npc_timbermaw_ancestorAI : ScriptedPetAI
 {
-	explicit npc_timbermaw_ancestorAI(Creature* pCreature) : ScriptedPetAI(pCreature)
-	{
-        m_creature->SetCanModifyStats(true);
+  explicit npc_timbermaw_ancestorAI(Creature* pCreature) : ScriptedPetAI(pCreature)
+  {
+    m_creature->SetCanModifyStats(true);
 
-       if (m_creature->GetCharmInfo())
-        m_creature->GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
+    if (m_creature->GetCharmInfo())
+      m_creature->GetCharmInfo()->SetReactState(REACT_DEFENSIVE);
 
-       npc_timbermaw_ancestorAI::Reset();
+    npc_timbermaw_ancestorAI::Reset();
+    m_healingTouchTimer = 0;
+  }
+  uint32 m_healingTouchTimer;
+  bool m_healingTouchTriggered = false;
 
-	}
-       uint32 m_lightningboltTimer;
-       bool m_targetImmune = false;
 
+  void Reset() override
+  {
 
-    void Reset() override
-	{
+  }
 
-	}
+  void DamageTaken(Unit* pDoneBy, uint32 &uiDamage) override
+  {
 
-	void DamageTaken(Unit* pDoneBy, uint32 &uiDamage) override
-	{
+    ScriptedPetAI::DamageTaken(pDoneBy, uiDamage);
+  }
 
-       ScriptedPetAI::DamageTaken(pDoneBy, uiDamage);
-	}
+  void UpdatePetAI(const uint32 uiDiff) override
+  {
+    //if triggered
 
-	void UpdatePetAI(const uint32 uiDiff) override
-	{
-        //heal if under 50%
-        if (m_creature->GetOwner()->HealthBelowPct(50))
-        {
-            DoCastSpellIfCan(m_creature->GetOwner(), SPELL_HEALING_TOUCH, false);
-        }
-        //cast lightning bolt
-        else 
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, false);
+    if (!m_healingTouchTriggered) {
+      if (m_creature->GetOwner()->HealthBelowPct(50))
+      {
+        DoCastSpellIfCan(m_creature->GetOwner(), SPELL_HEALING_TOUCH, false);
+        m_healingTouchTimer = 7000;
+        m_healingTouchTriggered = true;
+      }
+      else {
+        DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, false);
+      }
+    }
+    else {
+      DoCastSpellIfCan(m_creature->getVictim(), SPELL_LIGHTNING_BOLT, false);
+      m_healingTouchTimer -= uiDiff;
+    }
 
-      ScriptedPetAI::UpdatePetAI(uiDiff);
-	}
+    if (m_healingTouchTimer <= 0)
+      m_healingTouchTriggered = false;
+
+    ScriptedPetAI::UpdatePetAI(uiDiff);
+  }
 };
 
 CreatureAI* GetAI_timbermaw_ancestor(Creature* pCreature)
 {
-	return new npc_timbermaw_ancestorAI(pCreature);
+  return new npc_timbermaw_ancestorAI(pCreature);
 }
 
 /*######
