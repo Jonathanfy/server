@@ -363,6 +363,8 @@ class MANGOS_DLL_SPEC Object
         void BuildValuesUpdate(uint8 updatetype, ByteBuffer *data, UpdateMask *updateMask, Player *target ) const;
         void BuildUpdateDataForPlayer(Player* pl, UpdateDataMapType& update_players);
 
+        void SendOutOfRangeUpdateToPlayer(Player* player);
+
         virtual void DestroyForPlayer( Player *target ) const;
 
         const int32& GetInt32Value( uint16 index ) const
@@ -651,13 +653,13 @@ class MANGOS_DLL_SPEC WorldObject : public Object
 
                 void Update(uint32 time_diff)
                 {
-                    m_obj->Update( m_obj->m_updateTracker.timeElapsed(), time_diff);
-                    m_obj->m_updateTracker.Reset();
+m_obj->Update(m_obj->m_updateTracker.timeElapsed(), time_diff);
+m_obj->m_updateTracker.Reset();
                 }
 
                 void UpdateRealTime(uint32 now, uint32 time_diff)
                 {
-                    m_obj->Update( m_obj->m_updateTracker.timeElapsed(now), time_diff);
+                    m_obj->Update(m_obj->m_updateTracker.timeElapsed(now), time_diff);
                     m_obj->m_updateTracker.ResetTo(now);
                 }
 
@@ -829,10 +831,11 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         void MonsterWhisper(int32 textId, Unit* receiver, bool IsBossWhisper = false) const;
         void MonsterYellToZone(int32 textId, uint32 language = 0, Unit* target = nullptr) const;
         void MonsterScriptToZone(int32 textId, ChatMsg type, uint32 language = 0, Unit* target = nullptr) const;
-        static void BuildMonsterChat(WorldPacket *data, ObjectGuid senderGuid, uint8 msgtype, char const* text, uint32 language, char const* name, ObjectGuid targetGuid, char const* targetName);
+        static void BuildMonsterChat(WorldPacket *data, ObjectGuid senderGuid, uint8 msgtype, char const* text, uint32 language, char const* name, ObjectGuid targetGuid);
 
         void PlayDistanceSound(uint32 sound_id, Player* target = nullptr);
         void PlayDirectSound(uint32 sound_id, Player* target = nullptr);
+        void PlayDirectMusic(uint32 music_id, Player* target = nullptr);
 
         void SendObjectDeSpawnAnim(ObjectGuid guid);
         void SendGameObjectCustomAnim(ObjectGuid guid, uint32 animId = 0);
@@ -861,7 +864,7 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         Map * FindMap() const { return m_currMap; }
 
         //used to check all object's GetMap() calls when object is not in world!
-        void ResetMap() { m_currMap = nullptr; }
+        void ResetMap();
 
         //obtain terrain data for map where this object belong...
         TerrainInfo const* GetTerrain() const;
@@ -908,6 +911,12 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         void SetLocationMapId(uint32 _mapId) { m_mapId = _mapId; }
         void SetLocationInstanceId(uint32 _instanceId) { m_InstanceId = _instanceId; }
 
+        bool IsWithinLootXPDist(WorldObject const* objToLoot) const;
+
+        // val is added to CONFIG_FLOAT_GROUP_XP_DISTANCE when calculating
+        // if player should be eligible for loot and XP from this object.
+        void SetLootAndXPModDist(float val);
+
     protected:
         explicit WorldObject();
 
@@ -925,6 +934,8 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         ViewPoint m_viewPoint;
 
         WorldUpdateCounter m_updateTracker;
+        
+        float m_lootAndXPRangeModifier;
 };
 
 #endif

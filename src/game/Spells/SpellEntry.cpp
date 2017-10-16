@@ -176,6 +176,12 @@ void SpellEntry::ComputeBinary()
         }
     }
     _isBinary = foundNoDamageAura;
+    if (Id == 26143) {              // SPELL_MIND_FLAY (C'Thuns Eye Tentacles)
+        _isBinary = true;
+    }
+    else if (Id == 26478) {
+        _isBinary = true;           // SPELL_GROUND_RUPTURE_NATURE (C'thuns Giant tentacles ground rupture)
+    }
 }
 
 void SpellEntry::ComputeDispel()
@@ -340,6 +346,25 @@ DiminishingReturnsType GetDiminishingReturnsGroupType(DiminishingGroup group)
     }
 
     return DRTYPE_NONE;
+}
+
+float GetDiminishingRate(uint32 type)
+{
+    switch (type)
+    {
+        case DIMINISHING_LEVEL_1:
+            return 1.0f;
+        case DIMINISHING_LEVEL_2:
+            return 0.5f;
+        case DIMINISHING_LEVEL_3:
+            return 0.25f;
+        case DIMINISHING_LEVEL_IMMUNE:
+            return 0.0f;
+        default:
+            break;
+    }
+
+    return 1.0f;
 }
 
 bool SpellEntry::IsPvEHeartBeat() const
