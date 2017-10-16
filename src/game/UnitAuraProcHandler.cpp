@@ -247,8 +247,8 @@ bool Unit::IsTriggeredAtSpellProcEvent(Unit *pVictim, SpellAuraHolder* holder, S
         sLog.outString("Flag : 0x%x, Extr : 0x%x. Aura %u (ICON %u)",
             procFlag, procExtra, spellProto->Id, spellProto->SpellIconID);*/
 
-    // Flurry can't proc on additional windfury attacks (is this right?)
-    if (spellProto->Id == 16280 && m_extraAttacks)
+    // Flurry can't proc on additional windfury attacks
+    if (spellProto->SpellIconID == 108 && spellProto->SpellVisual == 2759 && m_extraAttacks)
         return false;
 
     // Don't proc weapons on Sap
@@ -259,13 +259,6 @@ bool Unit::IsTriggeredAtSpellProcEvent(Unit *pVictim, SpellAuraHolder* holder, S
     /// Delete all these spells, and manage it via the DB (spell_proc_event)
     if (procSpell)
     {
-        // Redoubt
-        if (spellProto->SpellIconID == 28 && spellProto->SpellFamilyName == 0)
-        {
-            if (procFlag & PROC_FLAG_TAKEN_MELEE_HIT && procExtra & PROC_EX_CRITICAL_HIT)
-                return true;
-            return false;
-        }
         // Eye for an Eye
         if (spellProto->SpellIconID == 1820)
         {
@@ -281,7 +274,13 @@ bool Unit::IsTriggeredAtSpellProcEvent(Unit *pVictim, SpellAuraHolder* holder, S
                 return true;
             return false;
         }
-
+        // Wrath of Cenarius - Spell Blasting
+        if (spellProto->Id == 25906)
+        {
+            // Should be able to proc when negative magical effect lands on a target.
+            if (!isVictim && (procSpell->DmgClass == SPELL_DAMAGE_CLASS_MAGIC) && !IsPositiveSpell(procSpell) && (procExtra & (PROC_EX_NORMAL_HIT | PROC_EX_CRITICAL_HIT)) && !(IsSpellAppliesAura(procSpell) && (procFlag & PROC_FLAG_ON_DO_PERIODIC)))
+                return roll_chance_f((float)spellProto->procChance);
+        }
         // DRUID
         // Omen of Clarity
         if (spellProto->Id == 16864)
@@ -444,48 +443,49 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     triggered_spell_id = 25997;
                     break;
                 }
-                 // Sweeping Strikes
-		case 12292:
-		case 18765:
-		{
-			// Prevent chain of triggered spell from same triggered spell
-			if (procSpell && procSpell->Id == 26654)
-				return SPELL_AURA_PROC_FAILED;
+                // Sweeping Strikes
+                case 12292:
+                case 18765:
+                {
+                    // Prevent chain of triggered spell from same triggered spell
+                    if (procSpell && (procSpell->Id == 26654 || procSpell->Id == 12723))
+                        return SPELL_AURA_PROC_FAILED;
 
-			if (procSpell && procSpell->Id == 12723)
-				return SPELL_AURA_PROC_FAILED;
+                    // Fix range for target selection when proccing SS with whirlwind. Whirlwind doesn't
+                    // have a radius set on its prototype, but it is 8 yards.
+                    float radius = ATTACK_DISTANCE;
+                    if (procSpell && procSpell->Id == 1680)
+                        radius = 8.0f;
 
-			target = SelectRandomUnfriendlyTarget(pVictim);
-			if (!target)
-				return SPELL_AURA_PROC_FAILED;
+                    target = SelectRandomUnfriendlyTarget(pVictim, radius);
+                    if (!target)
+                        return SPELL_AURA_PROC_FAILED;
 
-			// Case for Execute. This will only run when procced by Execute
-			if (procSpell && procSpell->Id == 20647)
-			{
-
-				if (pVictim->GetHealthPercent() < 20.0f && target->GetHealthPercent() < 20.0f)  // If Both Target A and target B is sub 20% do full damage
-				{
-					basepoints[0] = damage * 100 / CalcArmorReducedDamage(pVictim, 100);
-					triggered_spell_id = 12723; //Note this SS id deals 1 damage by itself (Cannot crit)
-				}
-				else if (pVictim->GetHealthPercent() < 20.0f)	// If only Target A is sub 20% and target B is over 20% do Basic attack damage
-				{
-					triggered_spell_id = 26654;	// This SS deals damage equal to AA also this spell ID can crit ?? Maybe this explains the rumor of SS criting since it only scales with spell crit ? = 5% crit.
-				}
-				else // Full damage on anything else (Shouldn't really ever be used) since execute can only be used sub 20% anyway.                                             
-				{
-					basepoints[0] = damage * 100 / CalcArmorReducedDamage(pVictim, 100);
-					triggered_spell_id = 12723;	//Note this SS id deals 1 damage by itself (Cannot crit)
-				}
-			}
-			else // Full damage on anything else 
-			{
-				basepoints[0] = damage * 100 / CalcArmorReducedDamage(pVictim, 100);
-				triggered_spell_id = 12723;	//Note this SS id deals 1 damage by itself (Cannot crit)
-			}
-
-			break;
-		}
+                    // Case for Execute. This will only run when procced by Execute
+                    if (procSpell && procSpell->Id == 20647)
+                    {
+                        if (pVictim->GetHealthPercent() <= 20.0f && target->GetHealthPercent() <= 20.0f)  // If Both Target A and target B is less or equal than 20% do full damage
+                        {
+                            basepoints[0] = damage * 100 / CalcArmorReducedDamage(pVictim, 100);
+                            triggered_spell_id = 12723; //Note this SS id deals 1 damage by itself (Cannot crit)
+                        }
+                        else if (pVictim->GetHealthPercent() <= 20.0f)	// If only Target A is less or equal than 20% and target B is over 20% do Basic attack damage
+                        {
+                            triggered_spell_id = 26654;	// This SS deals damage equal to AA also this spell ID can crit ?? Maybe this explains the rumor of SS criting since it only scales with spell crit ? = 5% crit.
+                        }
+                        else // Full damage on anything else (Shouldn't really ever be used) since execute can only be used less or equal than 20% anyway.
+                        {
+                            basepoints[0] = damage * 100 / CalcArmorReducedDamage(pVictim, 100);
+                            triggered_spell_id = 12723;	//Note this SS id deals 1 damage by itself (Cannot crit)
+                        }
+                    }
+                    else // Full damage on anything else
+                    {
+                        basepoints[0] = damage * 100 / CalcArmorReducedDamage(pVictim, 100);
+                        triggered_spell_id = 12723;	//Note this SS id deals 1 damage by itself (Cannot crit)
+                    }
+                    break;
+                }
                 // Retaliation
                 case 20230:
                 {
@@ -515,6 +515,8 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     return SPELL_AURA_PROC_OK;
                 }
                 // Viscidus Frost Weakness
+	        // Disabled for now, handled on Viscidus script
+                /*
                 case 25926:
                 {
                     if (!procSpell)
@@ -535,25 +537,25 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
 
                     break;
                 }
+		*/
                 // Viscidus Freeze
                 case 25937:
                 {
                     if (procSpell)
                     {
-                        if (GetSchoolMask(procSpell->School) != SPELL_SCHOOL_MASK_NORMAL)
+                        // Wand spell entry marked as physical, we need to add an exception here
+                        if (GetSchoolMask(procSpell->School) != SPELL_SCHOOL_MASK_NORMAL || procSpell->Id == 5019)
                             return SPELL_AURA_PROC_FAILED;
                     }
-                    else
-                        return SPELL_AURA_PROC_FAILED;
 
                     ++triggeredByAura->GetModifier()->m_amount;
                     triggerAmount = triggeredByAura->GetModifier()->m_amount;
 
-                    if (triggerAmount == 25)
-                        MonsterTextEmote(-1531044, NULL); // Cracks
-                    else if (triggerAmount == 50)
-                        MonsterTextEmote(-1531045, NULL); // Shatter
-                    else if (triggerAmount == 75)
+                    if (triggerAmount == 50)
+                        MonsterTextEmote(-1531044, NULL, true); // Cracks
+                    else if (triggerAmount == 100)
+                        MonsterTextEmote(-1531045, NULL, true); // Shatter
+                    else if (triggerAmount == 150)
                     {
                         RemoveAurasDueToSpell(25937);
                         triggered_spell_id = 25938; // Explode
@@ -710,58 +712,60 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                             sLog.outError("Unit::HandleDummyAuraProc: non handled spell id: %u (IG)", dummySpell->Id);
                             return SPELL_AURA_PROC_FAILED;
                     }
-
-		    // Get current Ignite Aura if exist
-		    Aura *igniteAura = target->GetAura(12654, EFFECT_INDEX_0);
-
-		    if (igniteAura)
-		    {
-			Modifier *igniteModifier = igniteAura->GetModifier();
-			SpellAuraHolder* igniteHolder = igniteAura->GetHolder();
-
-			int32 tickDamage = igniteModifier->m_amount;
-
-			bool notAtMaxStack = igniteAura->GetStackAmount() < 5;
-
-			// If 1 of 2 ticks of ignite have been applied (2s),
-			// Halve damage to apply correct remaining damage on 4s refresh
-			if (1 == igniteAura->GetAuraTicks() && notAtMaxStack)
-			    tickDamage = tickDamage / 2 + 1;
-
-			bool reapplyIgnite = igniteAura->GetAuraTicks() >= igniteAura->GetAuraMaxTicks();
-
-			if (!reapplyIgnite)
-			{
-
-		    	    if (notAtMaxStack)
-		    	    {
-			        tickDamage += basepoints[0];
-
-				igniteHolder->ModStackAmount(1);
-
-			        // Update DOT damage
-			        igniteModifier->m_amount = tickDamage;
-			        igniteAura->ApplyModifier(true, true, false);
-		            } 
-			    else
-			        igniteHolder->SetStackAmount(5);
-
-			    // Refresh Ignite Stack
-			    igniteHolder->Refresh(igniteAura->GetCaster(), target, igniteHolder );
-
-			    return SPELL_AURA_PROC_OK;
-			}
-			// All damage done, remove and continue to reapply
-			target->RemoveAurasDueToSpell(12654);	
-		    }
-				
-		    // No Ignite found, apply Ignite Aura
+                    
+                    // Get current Ignite Aura if exist
+                    Aura *igniteAura = target->GetAura(12654, EFFECT_INDEX_0);
+                    
+                    if (igniteAura)
+                    {
+                        Modifier *igniteModifier = igniteAura->GetModifier();
+                        SpellAuraHolder* igniteHolder = igniteAura->GetHolder();
+                        
+                        int32 tickDamage = igniteModifier->m_amount;
+                        
+                        bool notAtMaxStack = igniteAura->GetStackAmount() < 5;
+                        
+                        bool reapplyIgnite = igniteAura->GetAuraTicks() >= igniteAura->GetAuraMaxTicks();
+                        
+                        if (!reapplyIgnite)
+                        {
+                            if (notAtMaxStack)
+                            {
+                                tickDamage += basepoints[0];
+                                
+                                igniteHolder->ModStackAmount(1);
+                                
+                                // Update DOT damage
+                                igniteModifier->m_amount = tickDamage;
+                                igniteAura->ApplyModifier(true, true, false);
+                            }
+                            else
+                                igniteHolder->SetStackAmount(5);
+                            
+                            // Refresh Ignite Stack
+                            igniteHolder->Refresh(igniteAura->GetCaster(), target, igniteHolder );
+                            
+                            return SPELL_AURA_PROC_OK;
+                        }
+                        
+                        // All damage done, remove and continue to reapply
+                        target->RemoveAurasDueToSpell(12654);
+                    }
+                    
+                    // No Ignite found, apply Ignite Aura
                     triggered_spell_id = 12654;
                     break;
                 }
                 // Combustion
                 case 11129:
                 {
+                    // combustion counter was dispelled or clicked off
+                    if (!HasAura(28682))
+                    {
+                        RemoveAurasDueToSpell(11129);
+                        return SPELL_AURA_PROC_FAILED;
+                    }
+
                     //last charge and crit
                     if (triggeredByAura->GetHolder()->GetAuraCharges() <= 1 && (procEx & PROC_EX_CRITICAL_HIT))
                     {
@@ -1149,10 +1153,10 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                 // Nostalrius
                 case 28200:
                 {
-                    if (procFlags & (PROC_FLAG_SUCCESSFUL_POSITIVE_AOE_HIT | PROC_FLAG_SUCCESSFUL_AOE_SPELL_HIT))
+                    if (procFlags & (PROC_FLAG_SUCCESSFUL_AOE))
                     {
-                        if (procFlags != PROC_FLAG_SUCCESSFUL_POSITIVE_AOE_HIT &&
-                                procFlags != PROC_FLAG_SUCCESSFUL_AOE_SPELL_HIT)
+                        if (procFlags != PROC_FLAG_SUCCESSFUL_NONE_POSITIVE_SPELL &&
+                                procFlags != PROC_FLAG_SUCCESSFUL_NONE_SPELL_HIT)
                             return SPELL_AURA_PROC_FAILED;
                     }
                     break;
@@ -1475,7 +1479,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                         basepoints[EFFECT_INDEX_2] ? &basepoints[EFFECT_INDEX_2] : NULL,
                         true, castItem, triggeredByAura);
     else
-        CastSpell(target, trigger_spell_id, true, castItem, triggeredByAura);
+        CastSpell(target, trigger_spell_id, true, castItem, triggeredByAura, ObjectGuid(), nullptr, procSpell);
 
     if (cooldown && GetTypeId() == TYPEID_PLAYER)
         ((Player*)this)->AddSpellCooldown(trigger_spell_id, 0, time(NULL) + cooldown);
@@ -1489,7 +1493,9 @@ SpellAuraProcResult Unit::HandleProcTriggerDamageAuraProc(Unit *pVictim, uint32 
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "ProcDamageAndSpell: doing %u damage from spell id %u (triggered by auratype %u of spell %u)",
                      triggeredByAura->GetModifier()->m_amount, spellInfo->Id, triggeredByAura->GetModifier()->m_auraname, triggeredByAura->GetId());
     SpellNonMeleeDamage damageInfo(this, pVictim, spellInfo->Id, SpellSchools(spellInfo->School));
-    CalculateSpellDamage(&damageInfo, triggeredByAura->GetModifier()->m_amount, spellInfo);
+    damageInfo.damage = CalculateSpellDamage(pVictim, spellInfo, triggeredByAura->GetEffIndex());
+    damageInfo.damage = SpellDamageBonusDone(pVictim, spellInfo, damageInfo.damage, SPELL_DIRECT_DAMAGE);
+    damageInfo.damage = pVictim->SpellDamageBonusTaken(this, spellInfo, damageInfo.damage, SPELL_DIRECT_DAMAGE);
     damageInfo.target->CalculateAbsorbResistBlock(this, &damageInfo, spellInfo);
     DealDamageMods(damageInfo.target, damageInfo.damage, &damageInfo.absorb);
     SendSpellNonMeleeDamageLog(&damageInfo);
@@ -1547,6 +1553,39 @@ SpellAuraProcResult Unit::HandleOverrideClassScriptAuraProc(Unit *pVictim, uint3
                 return SPELL_AURA_PROC_FAILED;
 
             triggered_spell_id = 24406;
+            break;
+        }
+        case 3656: // Corrupted Healing
+        {
+            // only proc on direct healing
+            if (IsSpellHaveEffect(procSpell, SPELL_EFFECT_HEAL))
+                triggered_spell_id = 23402;
+            break;
+        }
+        case 4533: // Druid T3 Bonus: 28716 (50% chance)
+        {
+            if (procSpell->IsFitToFamily<SPELLFAMILY_DRUID, CF_DRUID_REJUVENATION>())
+            {
+                switch (pVictim->getPowerType())
+                {
+                case POWER_MANA:
+                    triggered_spell_id = 28722;
+                    break;
+                case POWER_RAGE:
+                    triggered_spell_id = 28723;
+                    break;
+                case POWER_ENERGY:
+                    triggered_spell_id = 28724;
+                    break;
+                }
+            }
+            break;
+        }
+        case 4537: // Druid T3 Bonus: 28744
+        {
+            if (procSpell->IsFitToFamily<SPELLFAMILY_DRUID, CF_DRUID_REGROWTH>())
+                triggered_spell_id = 28750;
+
             break;
         }
     }

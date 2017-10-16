@@ -1238,24 +1238,15 @@ struct WarEffort
 
 static const WarEffort SharedObjectives[5] =
 {
-    /* Blizzlile
     {2840,  90000,  2840,  "Copper Bar", WAREFFORT_BAR},
     {8831,  26000,  8831,  "Purple Lotus", WAREFFORT_HERBS},
     {4304,  80000,  4304,  "Thick Leather", WAREFFORT_SKINS},
     {6887,  17000,  6887,  "Spotted Yellowtail", WAREFFORT_COOKING},
     {14529, 400000, 14529, "Runecloth Bandage", WAREFFORT_BANDAGES}
-    */
-
-    {2840,  1250000,  2840,  "Copper Bar",          WAREFFORT_BAR},
-    {8831,   700000,  8831,  "Purple Lotus",        WAREFFORT_HERBS},
-    {4304,  1300000,  4304,  "Thick Leather",       WAREFFORT_SKINS},
-    {6887,   600000,  6887,  "Spotted Yellowtail",  WAREFFORT_COOKING},
-    {14529, 2000000, 14529,  "Runecloth Bandage",   WAREFFORT_BANDAGES}
 };
 
 static const WarEffort AllianceObjectives[10] =
 {
-    /* Blizzlile
     {3575,  28000,  3575,   "Iron Bar", WAREFFORT_BAR},
     {12359, 24000,  12359,  "Thorium Bar", WAREFFORT_BAR},
     {8836,  20000,  8836,   "Arthas' Tears", WAREFFORT_HERBS},
@@ -1266,23 +1257,10 @@ static const WarEffort AllianceObjectives[10] =
     {5095,  14000,  5095,   "Rainbow Fin Albacore", WAREFFORT_COOKING},
     {1251,  800000, 1251,   "Linen Bandage", WAREFFORT_BANDAGES},
     {6450,  600000, 6450,   "Silk Bandage", WAREFFORT_BANDAGES}
-    */
-
-    {3575,   600000,  3575,   "Iron Bar",               WAREFFORT_BAR},
-    {12359,  850000,  12359,  "Thorium Bar",            WAREFFORT_BAR},
-    {8836,   425000,  8836,   "Arthas' Tears",          WAREFFORT_HERBS},
-    {3820,   450000,  3820,   "Stranglekelp",           WAREFFORT_HERBS},
-    {2318,   850000,  2318,   "Light Leather",          WAREFFORT_SKINS},
-    {2319,   575000,  2319,   "Medium Leather",         WAREFFORT_SKINS},
-    {12210,  450000,  12210,  "Roast Raptor",           WAREFFORT_COOKING},
-    {5095,   450000,  5095,   "Rainbow Fin Albacore",   WAREFFORT_COOKING},
-    {1251,  2000000,  1251,   "Linen Bandage",          WAREFFORT_BANDAGES},
-    {6450,  1600000,  6450,   "Silk Bandage",           WAREFFORT_BANDAGES}
 };
 
 static const WarEffort HordeObjectives[10] =
 {
-    /* Blizzlile
     {3576,  22000,  3576,   "Tin Bar", WAREFFORT_BAR},
     {3860,  18000,  3860,   "Mithril Bar", WAREFFORT_BAR},
     {2447,  96000,  2447,   "Peacebloom", WAREFFORT_HERBS},
@@ -1293,18 +1271,6 @@ static const WarEffort HordeObjectives[10] =
     {13935, 10000,  13935,  "Baked Salmon", WAREFFORT_COOKING},
     {3530,  250000, 3530,   "Wool Bandage", WAREFFORT_BANDAGES},
     {8544,  250000, 8544,   "Mageweave Bandage", WAREFFORT_BANDAGES}
-    */
-
-    {3576,   425000, 3576,   "Tin Bar",           WAREFFORT_BAR},
-    {3860,   525000, 3860,   "Mithril Bar",       WAREFFORT_BAR},
-    {2447,   825000, 2447,   "Peacebloom",        WAREFFORT_HERBS},
-    {4625,   425000, 4625,   "Firebloom",         WAREFFORT_HERBS},
-    {4234,   700000, 4234,   "Heavy Leather",     WAREFFORT_SKINS},
-    {8170,   850000, 8170,   "Rugged Leather",    WAREFFORT_SKINS},
-    {12209,  275000, 12209,  "Lean Wolf Steak",   WAREFFORT_COOKING},
-    {13935,  375000, 13935,  "Baked Salmon",      WAREFFORT_COOKING},
-    {3530,  1250000, 3530,   "Wool Bandage",      WAREFFORT_BANDAGES},
-    {8544,  1000000, 8544,   "Mageweave Bandage", WAREFFORT_BANDAGES}
 };
 
 enum
@@ -2522,7 +2488,7 @@ struct npc_anachronos_the_ancientAI : public ScriptedAI
 
     void AbortScene()
     {
-        m_uiEventStage = 1000;
+        m_uiEventStage = 0;
         m_uiEventTimer = 0;
 
         DoUnsummonArmy();
@@ -3630,7 +3596,7 @@ enum
     /* Hunterkiller */
     SPELL_THUNDERCLAP = 15588,
     SPELL_CHARGE = 25821,
-    SPELL_CLEAVE = 40504,
+    SPELL_CLEAVE = 11427,
     SPELL_FEAR = 25815,
 
     /* Merok */
@@ -3782,7 +3748,7 @@ struct npc_Krug_SkullSplitAI : public ScriptedAI
 
     void ResetEvent()
     {
-        m_creature->MonsterTextEmote("reset", NULL); // pour debug
+        // m_creature->MonsterTextEmote("reset", NULL); // pour debug
         eEventStatus = EVENT_NOT_STARTED;
         if (Creature* pHunterKiller = m_creature->GetMap()->GetCreature(m_uiHunterKillerGUID))
         {
@@ -3816,7 +3782,7 @@ struct npc_Krug_SkullSplitAI : public ScriptedAI
 
             Creature* pHunterKiller = m_creature->SummonCreature(NPC_HUNTERKILLER,
                                       HUNTERKILLER_SPAWN_POS_X, HUNTERKILLER_SPAWN_POS_Y, HUNTERKILLER_SPAWN_POS_Z, 0.8f,
-                                      TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 150000);
+                                      TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 450000, true);
             if (pHunterKiller)
             {
                 eEventStatus = EVENT_STARTED;
@@ -3830,7 +3796,7 @@ struct npc_Krug_SkullSplitAI : public ScriptedAI
 
     void CompleteEvent()
     {
-        m_uiEventResetTimer = 30000;
+        m_uiEventResetTimer = 1800000;
         eEventStatus = EVENT_COMPLETE;
         m_bIsDoingSpeach = false;
         m_bGruntSpeech = true;
@@ -3863,7 +3829,7 @@ struct npc_Krug_SkullSplitAI : public ScriptedAI
 
         if (pSummoned->GetObjectGuid() == m_uiHunterKillerGUID)
         {
-            m_creature->MonsterTextEmote("SumCreaJustDied", NULL); // pour debug
+            // m_creature->MonsterTextEmote("SumCreaJustDied", NULL); // pour debug
             CompleteEvent();
         }
     }
@@ -3872,14 +3838,14 @@ struct npc_Krug_SkullSplitAI : public ScriptedAI
     {
         if (pSummoned->GetObjectGuid() == m_uiHunterKillerGUID)
         {
-            m_creature->MonsterTextEmote("SumCreaDespawn", NULL); // pour debug
+            // m_creature->MonsterTextEmote("SumCreaDespawn", NULL); // pour debug
             ResetEvent();
         }
     }
 
     void JustDied(Unit* pKiller)
     {
-        m_creature->MonsterTextEmote("JustDied", NULL); // pour debug
+        // m_creature->MonsterTextEmote("JustDied", NULL); // pour debug
         ResetEvent();
     }
 
@@ -3890,7 +3856,7 @@ struct npc_Krug_SkullSplitAI : public ScriptedAI
         {
             if (m_uiEventResetTimer <= uiDiff)
             {
-                m_creature->MonsterTextEmote("CompleteEnd", NULL); // pour debug
+                // m_creature->MonsterTextEmote("CompleteEnd", NULL); // pour debug
                 ResetEvent();
             }
             else
@@ -4018,7 +3984,7 @@ struct npc_Krug_SkullSplitAI : public ScriptedAI
         {
             if (eEventStatus == EVENT_STARTED)
             {
-                m_creature->MonsterTextEmote("Clean2", NULL); // pour debug
+                // m_creature->MonsterTextEmote("Clean2", NULL); // pour debug
                 ResetEvent();
             }
         }
